@@ -16,6 +16,7 @@
 
 # Папки сборки и кэш 
 build/
+pre-alpha/
 .cache/
 
 # Папка VSCode

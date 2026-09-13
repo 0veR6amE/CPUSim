@@ -6,9 +6,11 @@
  * @brief Вспомогательные функции: кодирование/декодирование double <-> TokenStream.
  * @author MolNa
  * @date 2026-09-13
- * @version 1.0.0
+ * @version 1.1.0
  * @copyright MIT License
+ * @todo Из-за кодирования и декодирования падает точность чисел, исправить
  */
+
 
 #include "../Token/TokenStream.h"
 #include "../CONST/Number.h"
@@ -21,7 +23,7 @@
 #include <numbers> // Для std::numbers::pi и e (C++20)
 
 /**
- * @brief Упаковать double в поток 3-битных токенов (balanced base-4).
+ * @brief Упаковать double в поток 3-битных токенов.
  */
 inline TokenStream createStreamFromDouble(double val) {
     TokenStream stream;
@@ -33,21 +35,20 @@ inline TokenStream createStreamFromDouble(double val) {
         return stream;
     }
     
+    // Упрощенный ноль: просто 0 и закрывающая 7
     if (val == 0.0) {
-        stream.write(0);
-        stream.write(6); stream.write(0); stream.write(6);
         stream.write(0);
         stream.write(7);
         return stream;
     }
 
     // Проверка на точное совпадение с системными константами
-    if (val == std::numbers::pi) {
-        stream.write(6); stream.write(5); stream.write(6); stream.write(7);
-        return stream;
-    }
     if (val == std::numbers::e) {
         stream.write(6); stream.write(4); stream.write(6); stream.write(7);
+        return stream;
+    }
+    if (val == std::numbers::pi) {
+        stream.write(6); stream.write(5); stream.write(6); stream.write(7);
         return stream;
     }
 
@@ -73,7 +74,7 @@ inline TokenStream createStreamFromDouble(double val) {
         for (auto& d : raw) d = static_cast<int8_t>(-d);
     }
 
-    // Балансировка (LSB -> MSB)
+    // Балансировка мантиссы (LSB -> MSB)
     std::vector<int8_t> balanced;
     int carry = 0;
     for (auto it = raw.rbegin(); it != raw.rend(); ++it) {
@@ -85,30 +86,29 @@ inline TokenStream createStreamFromDouble(double val) {
     }
     if (carry != 0) balanced.push_back(static_cast<int8_t>(carry));
 
-    // Запись MSB -> LSB
+    // Запись мантиссы MSB -> LSB
     for (auto it = balanced.rbegin(); it != balanced.rend(); ++it) {
-        stream.write(LUT_ENCODE_MANTISSA[*it + LUT_ENCODE_MANTISSA_OFFSET]);
+        stream.write(LUT_ENCODE_MANTISSA[*it + LUT_ENCODE_MANTISSA_OFFSET]); //
     }
 
-    // Окно Base-10
-    stream.write(6); stream.write(0); stream.write(6);
+    // Оптимизированный маркер экспоненты (база 10)
+    stream.write(6);
 
-    // Экспонента с инверсией знаков разрядов (balanced base-4)
+    // Балансировка экспоненты (разбиваем на разряды balanced base-4 в диапазоне [-3..2])
     int temp_exp = real_exp;
     std::vector<int8_t> exp_digits;
     while (temp_exp != 0) {
         int rem = temp_exp % 4;
         temp_exp /= 4;
         if      (rem >  2) { rem -= 4; temp_exp += 1; }
-        else if (rem < -2) { rem += 4; temp_exp -= 1; }
+        else if (rem < -3) { rem += 4; temp_exp -= 1; } // Синхронизировано с диапазоном [-3..2]
         exp_digits.push_back(static_cast<int8_t>(rem));
     }
     if (exp_digits.empty()) exp_digits.push_back(0);
     
+    // Запись экспоненты MSB -> LSB
     for (auto it = exp_digits.rbegin(); it != exp_digits.rend(); ++it) {
-        // ИНВЕРСИЯ ЗНАКА: Умножаем разряд на -1 перед кодированием в LUT
-        int8_t inverted_digit = static_cast<int8_t>(-(*it));
-        stream.write(LUT_ENCODE_EXPONENT[inverted_digit + LUT_ENCODE_EXPONENT_OFFSET]);
+        stream.write(LUT_ENCODE_EXPONENT[*it + LUT_ENCODE_EXPONENT_OFFSET]); //
     }
 
     stream.write(7);
@@ -121,66 +121,64 @@ inline TokenStream createStreamFromDouble(double val) {
 inline double streamToDouble(const TokenStream& stream) {
     if (stream.size() < 1) return 0.0;
     
-    // Потоковый саморазделяемый NaN (две 7 подряд) или одиночная 7 на старте
+    // Потоковый NaN (7 7) или пустой маркер
     if (stream.read(0) == 7) {
         if (stream.size() >= 2 && stream.read(1) == 7) return std::nan("");
         return 0.0; 
     }
 
-    // Поиск сервисного окна 6..6
-    int first_6 = -1, second_6 = -1;
+    // Поиск первой шестерки
+    int first_6 = -1;
     for (size_t i = 0; i < stream.size(); ++i) {
         if (stream.read(i) == 6) {
-            if (first_6 == -1) first_6 = static_cast<int>(i);
-            else { second_6 = static_cast<int>(i); break; }
+            first_6 = static_cast<int>(i);
+            break;
         }
     }
 
-    // Если число начинается сразу с окна константы (например, 6 4 6 7)
-    if (first_6 == 0 && second_6 == 2) {
-        uint8_t mode = stream.read(1);
-        if (mode == 4) return std::numbers::e;
-        if (mode == 5) return std::numbers::pi;
-    }
+    const int mantissa_len = (first_6 != -1) ? first_6 : static_cast<int>(stream.size()) - 1;
 
-    const int mantissa_len = (first_6 != -1) ? first_6
-                                             : static_cast<int>(stream.size()) - 1;
-
-    // Сборка мантиссы
+    // Сборка мантиссы через LUT
     double mantissa = 0.0;
     double weight   = 1.0; 
     for (int i = 0; i < mantissa_len; ++i) {
-        const int8_t d = LUT_DECODE_MANTISSA[stream.read(static_cast<size_t>(i))];
+        const int8_t d = LUT_DECODE_MANTISSA[stream.read(static_cast<size_t>(i))]; //
         mantissa += static_cast<double>(d) * weight;
         weight   *= 0.25; 
     }
 
     int exp = 0;
-    int base_id = 0;
-    
-    if (first_6 != -1 && second_6 != -1) {
-        base_id = static_cast<int>(stream.read(static_cast<size_t>(first_6) + 1));
-        
-        // Если это константный режим внутри числа, подменяем мантиссу
-        if (base_id == 4) return std::numbers::e;
-        if (base_id == 5) return std::numbers::pi;
+    double base = 10.0;
+    size_t exp_start_idx = 0;
 
-        // Декодирование экспоненты с учетом поразрядной инверсии знака
-        for (size_t i = static_cast<size_t>(second_6) + 1; i < stream.size() && stream.read(i) != 7; ++i) {
-            // Читаем сырое сбалансированное значение разряда степени и инвертируем его обратно (-val)
-            int8_t decoded_digit = -LUT_DECODE_EXPONENT[stream.read(i)];
+    if (first_6 != -1) {
+        // Проверяем, это одиночная '6' или сложное окно '6 [мод] 6'
+        if (first_6 + 2 < static_cast<int>(stream.size()) && stream.read(static_cast<size_t>(first_6) + 2) == 6) {
+            uint8_t mode = stream.read(static_cast<size_t>(first_6) + 1);
+            
+            // Если число состоит ТОЛЬКО из окна константы
+            if (first_6 == 0) {
+                if (mode == 4) return std::numbers::e;
+                if (mode == 5) return std::numbers::pi;
+            }
+
+            switch (mode) {
+                case 1:  base = 2.0;            break;
+                case 2:  base = 4.0;            break;
+                case 3:  base = std::numbers::e;break;
+                default: base = 10.0;           break;
+            }
+            exp_start_idx = static_cast<size_t>(first_6) + 3;
+        } else {
+            base = 10.0;
+            exp_start_idx = static_cast<size_t>(first_6) + 1;
+        }
+
+        // Чтение цифр степени через LUT
+        for (size_t i = exp_start_idx; i < stream.size() && stream.read(i) != 7; ++i) {
+            int8_t decoded_digit = LUT_DECODE_EXPONENT[stream.read(i)]; //
             exp = exp * 4 + decoded_digit;
         }
-    }
-
-    // Выбор базы математического пространства
-    double base = 10.0;
-    switch (base_id) {
-        case 0: base = 10.0;           break;
-        case 1: base =  2.0;           break;
-        case 2: base =  4.0;           break;
-        case 3: base = std::numbers::e;break;
-        default: base = 10.0;          break;
     }
 
     return mantissa * std::pow(base, static_cast<double>(exp));
@@ -194,11 +192,10 @@ inline std::string streamToPrettyString(const TokenStream& stream, int precision
         return "NaN";
     }
     
-    // Обработка встроенных констант (исправлены индексы: 4 -> e, 5 -> π)
     if (stream.size() >= 3 && stream.read(0) == 6 && stream.read(2) == 6) {
         const uint8_t c = stream.read(1);
         if (c == 4) return "e";
-        if (c == 5) return "\xCF\x80";  // π в UTF-8
+        if (c == 5) return "\xCF\x80"; // π в UTF-8
     }
 
     const double v = streamToDouble(stream);

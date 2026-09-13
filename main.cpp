@@ -17,7 +17,7 @@
 #include <clocale>
 
 
-
+/*
 int MAIN() {
     std::cout << "=== ТЕСТИРОВАНИЕ ПОТОКОВОЙ АРХИТЕКТУРЫ БЕЗ КЛАССА NUMBER ===\n\n";
 
@@ -62,6 +62,23 @@ int MAIN() {
     std::vector<TokenStream> parsed_numbers = parser.parseStream(regResult);
     std::cout << "  Парсер успешно выделил из буфера чисел: " << parsed_numbers.size() << "\n";
     std::cout << "  Содержимое выделенного числа: "; alu.printNumber(parsed_numbers[0]);
+    return 0;
+}
+*/
+
+int MAIN(){
+    TokenStream regA = createStreamFromDouble(0.0003);    // 3 * 10^-4
+    
+    CpuUnit alu;
+    std::cout << "Регистр A (0.0003):\n";
+    std::cout << "  Математический вид: "; alu.printNumber(regA);
+    std::cout << "  Сырые токены в памяти: ";
+    for (size_t i = 0; i < regA.size(); ++i) std::cout << (int)regA.read(i) << " ";
+    std::cout << "\n  Физический размер: " << regA.sizeInBytes() << " байт\n\n";
+
+    std::cout << streamToPrettyString(regA, 12) << "\n";
+
+
     return 0;
 }
 
