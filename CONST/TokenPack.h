@@ -1,5 +1,5 @@
-#ifndef TOKEN_PACK_CPP
-#define TOKEN_PACK_CPP
+#ifndef TOKEN_PACK_H
+#define TOKEN_PACK_H
 
 /**
  * @file TokenPack.h

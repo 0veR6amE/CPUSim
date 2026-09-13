@@ -18,9 +18,15 @@
 build/
 .cache/
 
+# Папка VSCode
+.VSCode/
+
 # Специфичные файлы Windows (если применимо) 
 Thumbs.db
 Desktop.ini
 
 # Сбощик
 build.bat
+
+# Тест
+Test.txt

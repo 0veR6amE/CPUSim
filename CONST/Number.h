@@ -1,8 +1,8 @@
-#ifndef NUMBER_CPP
-#define NUMBER_CPP
+#ifndef NUMBER_H
+#define NUMBER_H
 
 /**
- * @file NUMBER.h
+ * @file Number.h
  * @brief Таблицы декодирования и раскладка числа в потоке токенов.
  * @author MolNa
  * @date 2026-09-13
@@ -10,7 +10,7 @@
  * @copyright MIT License
  */
 
-#include "Enums.cpp"
+#include "Enums.h"
 
 #include <cstddef>
 #include <cstdint>

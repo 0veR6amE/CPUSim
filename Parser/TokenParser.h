@@ -6,11 +6,11 @@
  * @brief Разбор непрерывного потока токенов на отдельные числа.
  * @author MolNa
  * @date 2026-09-13
- * @version 1.0.0
+ * @version 1.0.1
  * @copyright MIT License
  */
 
-#include "../CONST/Number.cpp"
+#include "../CONST/Number.h"
 #include "../Token/TokenStream.h"
 
 #include <vector>

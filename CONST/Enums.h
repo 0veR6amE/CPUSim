@@ -1,8 +1,8 @@
-#ifndef ENUMS_CPP
-#define ENUMS_CPP
+#ifndef ENUMS_H
+#define ENUMS_H
 
 /**
- * @file ENUMS.h
+ * @file Enums.h
  * @brief 
  * @author MolNa
  * @date 2026-09-13

@@ -10,7 +10,7 @@
  * @copyright MIT License
  */
 
-#include "../CONST/Number.cpp"
+#include "../CONST/Number.h"
 #include "../Token/TokenStream.h"
 
 #include <algorithm>

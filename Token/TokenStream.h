@@ -6,11 +6,11 @@
  * @brief Поток 3-битных токенов с упаковкой 8 в 3 байта.
  * @author MolNa
  * @date 2026-09-13
- * @version 1.0.0
+ * @version 1.0.1
  * @copyright MIT License
  */
 
-#include "../CONST/TokenPack.cpp"
+#include "../CONST/TokenPack.h"
 
 #include <cstddef>
 #include <cstdint>
