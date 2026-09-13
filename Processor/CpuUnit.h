@@ -10,7 +10,8 @@
  * @copyright MIT License
  */
 
-#include "Register.h"
+#include "../CONST/Number.cpp"
+#include "../Token/TokenStream.h"
 
 #include <algorithm>
 #include <cstddef>

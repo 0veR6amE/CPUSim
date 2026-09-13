@@ -1,7 +1,7 @@
 /**
  * @file main.cpp
  * @brief Демонстрация потоковой арифметики: сложение двух чисел.
- * @author MolNa
+ * @author MolNa aka 0veR6amE
  * @date 2026-09-13
  * @version 1.0.0
  * @copyright MIT License   
