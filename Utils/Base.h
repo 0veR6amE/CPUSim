@@ -16,7 +16,6 @@
 
 #include <array>
 #include <cstdint>
-#include <vector>
 
 namespace base {
 
@@ -25,7 +24,7 @@ namespace base {
  *        (balanced) системе счисления по основанию 4.
  * @param s Поток токенов, в который производится запись.
  * @param M Мантисса (целое число со знаком).
- * @note Каждая цифра после преобразования лежит в диапазоне -2..2
+ * @note Каждая цифра после преобразования лежит в диапазоне -2..3
  */
 inline void writeMantissa(TokenStream& s, int64_t M) {
     std::array<int8_t, 33> buf{};
@@ -55,7 +54,7 @@ inline void writeMantissa(TokenStream& s, int64_t M) {
  *        (balanced) системе счисления по основанию 4.
  * @param s Поток токенов, в который производится запись.
  * @param E Экспонента (целое число со знаком).
- * @note Каждая цифра после преобразования лежит в диапазоне -2..2
+ * @note Каждая цифра после преобразования лежит в диапазоне -3..2
  */
 inline void writeExponent(TokenStream& s, int32_t E) {
     std::array<int8_t, 17> buf{};
