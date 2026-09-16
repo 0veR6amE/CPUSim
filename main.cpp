@@ -36,6 +36,7 @@ void test(double val) {
 int main() {
     std::setlocale(LC_ALL, "Russian");
     test(3);
+    test(std::numbers::e);
     test(20);
     test(0.000000324);
     return 0;

@@ -6,7 +6,7 @@
  * @brief Вспомогательные функции: кодирование/декодирование double <-> TokenStream.
  * @author MolNa
  * @date 2026-09-16
- * @version 1.3.0
+ * @version 1.3.1
  * @copyright MIT License
  */
 
@@ -24,6 +24,12 @@
 
 /**
  * @brief Разбирает строку в научной нотации в мантиссу и десятичную экспоненту.
+ * @param sv Входная строка вида "[-]d[.d][eE[+-]d]".
+ * @param M  [out] Мантисса (целое число со знаком).
+ * @param E  [out] Экспонента по основанию 10.
+ * @return true при успешном разборе.
+ * @note Незначащие нули в конце мантиссы удаляются, а их количество
+ *       прибавляется к экспоненте.
  */
 inline bool parseScientific(std::string_view sv, int64_t& M, int32_t& E) {
     size_t i = 0;
@@ -74,8 +80,18 @@ inline bool parseScientific(std::string_view sv, int64_t& M, int32_t& E) {
 
 
 /**
- * @brief Упаковать double в поток 3-битных токенов.
- * @note Специальные значения: NaN -> 7 7, +inf -> 7 1 7, -inf -> 7 2 7, 0 -> 0 7. 
+ * @brief Упаковывает double в поток 3-битных токенов.
+ * @param val  Исходное число.
+ * @param base Система счисления для представления (Base10/Base2/Base4/BaseE).
+ * @return Готовый TokenStream с закодированным числом.
+ * @note Специальные значения:
+ *       - NaN  -> 7 7
+ *       - +inf -> 7 1 7
+ *       - -inf -> 7 2 7
+ *       - 0    -> 0 7
+ *       Константы:
+ *       - e    -> 6 4 6 7 
+ *       - pi   -> 6 5 6 7
  */
 inline TokenStream createStreamFromDouble(double val, MathBase base = MathBase::Base10) {
     TokenStream stream;
@@ -172,7 +188,15 @@ inline TokenStream createStreamFromDouble(double val, MathBase base = MathBase::
     return stream;
 }
 
-
+/**
+ * @brief Восстанавливает double из потока 3-битных токенов.
+ * @param stream Закодированный поток.
+ * @return Исходное значение (или ближайшее представимое).
+ * @note Понимает специальные маркеры NaN/inf/0, окна констант e/pi,
+ *       а также окна экспоненты для баз 10, 2, 4 и e.
+ *       Сборка значения выполняется через std::ldexp, std::exp 
+ *       или snprintf+strtod в зависимости от основания.
+ */
 inline double streamToDouble(const TokenStream& stream) {
     if (stream.size() < 1) return 0.0;
 
@@ -249,6 +273,11 @@ inline double streamToDouble(const TokenStream& stream) {
 
 /**
  * @brief Формирует человекочитаемое строковое представление потока токенов.
+ * @param stream    Закодированный поток.
+ * @param precision Количество значащих цифр при выводе (по умолчанию 17).
+ * @return Строка вида "3.14", "NaN", "inf", "-inf", "e", "π".
+ * @note Для специальных значений (NaN, ±inf) и констант e/pi
+ *       возвращает символьные обозначения без вызова streamToDouble.
  */
 inline std::string streamToPrettyString(const TokenStream& stream, int32_t precision = 17) {
     if (stream.size() >= 2 && stream.read(0) == 7 && stream.read(1) == 7)
